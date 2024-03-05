@@ -8,12 +8,11 @@ from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
 
-app = FastAPI(__name__)
+app = FastAPI()
 
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 
 UPLOAD_FOLDER = 'storage'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 configuration = True
 
 @app.get('/')
@@ -22,16 +21,12 @@ async def index():
     configuration = integrity_check_all(True)
     presets_array = build_presets('array1.xlsx','A2')
     options_array = build_options('array1.xlsx','A1')
-    return {
-        "configuration": configuration,
-        "presets_array": presets_array,
-        "options_array": options_array,
-    }
+    return FileResponse('./templates/index.html')
 
 @app.get('/upload_form')
 async def upload_form():
     logging.warning('Navigating to the upload form.')
-    return FileResponse('upload_form.html')
+    return FileResponse('./templates/upload_form.html')
 
 @app.post('/upload')
 async def upload(files: List[UploadFile] = File('files')):
@@ -62,11 +57,16 @@ async def zip_and_download():
 
 @app.get('/download_and_delete_file')
 async def download_and_delete_file():
-    file_path = '/workspaces/python-flask-exercises/flask/storage/strawberry.jpg'
+    file_name = 'strawberry.jpg'
+    file_path = os.path.join(UPLOAD_FOLDER, file_name)
+    if not os.path.exists(file_path):
+        logging.error("ERROR: FILE NOT FOUND 404")
+        raise HTTPException(status_code=404, detail="File not found")
+    
     try:
-        response = FileResponse(file_path, media_type='application/octet-stream')
+        response = FileResponse(path=file_path, media_type='image/jpg', filename=file_name)
         os.remove(file_path)
-        logging.warning('Downloading %s and removing it from the storage folder', file_path)
+        logging.warning('Downloading %s and removing it from the storage folder', file_name)
         return response
     except FileNotFoundError:
         logging.error("ERROR: FILE NOT FOUND 404")
@@ -84,4 +84,4 @@ async def config():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000, debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=5000)
