@@ -1,78 +1,87 @@
 import os
-import sys
 import zipfile
 import logging
-from flask import Flask, render_template, request, send_file, redirect
-from werkzeug.utils import secure_filename
+# from flask import Flask, render_template, request, send_file, redirect
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
 
-app = Flask(__name__)
+app = FastAPI(__name__)
+
+app.mount("/templates", StaticFiles(directory="templates"), name="templates")
+
 UPLOAD_FOLDER = 'storage'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-configuration:bool
-
 configuration = True
 
-@app.route('/')
-def index():
+@app.get('/')
+async def index():
+    global configuration
     configuration = integrity_check_all(True)
     presets_array = build_presets('array1.xlsx','A2')
     options_array = build_options('array1.xlsx','A1')
-    return render_template('index.html', configuration=configuration,presets_array=presets_array, options_array=options_array)
+    return {
+        "configuration": configuration,
+        "presets_array": presets_array,
+        "options_array": options_array,
+    }
 
-@app.route('/upload_form', methods=['GET'])
-def upload_form():
+@app.get('/upload_form')
+async def upload_form():
     logging.warning('Navigating to the upload form.')
-    return render_template('upload_form.html')
+    return FileResponse('upload_form.html')
 
-@app.route('/upload', methods=['GET','POST'])
-def upload():
-    files = request.files.getlist('files')
+@app.post('/upload')
+async def upload(files: List[UploadFile] = File('files')):
     for file in files:
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        filename = os.path.join(UPLOAD_FOLDER, file.filename)
+        with open(filename, "wb") as buffer:
+            buffer.write(await file.read())
         logging.warning('Uploading %s to storage folder.', filename)    
-    return redirect('/')
+    return {'message': 'Files uploaded successfully'}
 
-@app.route('/zip_and_download', methods=['GET'])
-def zip_and_download():
+@app.get('/zip_and_download')
+async def zip_and_download():
     # Assuming that you have files in the 'storage' folder
-    files_to_zip = os.listdir(app.config['UPLOAD_FOLDER'])
+    files_to_zip = os.listdir(UPLOAD_FOLDER)
     
     # Create a zip file
     zip_filename = 'zipped_files.zip'
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for filename in files_to_zip:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
             zipf.write(file_path, arcname=filename)
             logging.warning('Zipping %s which was in storage folder', filename)
             os.remove(file_path)
             logging.warning('Removing %s from storage folder', filename)
     
     # send the zip file for download
-    return send_file(zip_filename, as_attachment=True)
+    return FileResponse(zip_filename, media_type='application/zip', filename=zip_filename)
 
-@app.route('/download_and_delete_file')
-def download_and_delete_file():
+@app.get('/download_and_delete_file')
+async def download_and_delete_file():
     file_path = '/workspaces/python-flask-exercises/flask/storage/strawberry.jpg'
-    
     try:
-        response = send_file(file_path, as_attachment=True)
+        response = FileResponse(file_path, media_type='application/octet-stream')
         os.remove(file_path)
         logging.warning('Downloading %s and removing it from the storage folder', file_path)
         return response
     except FileNotFoundError:
         logging.error("ERROR: FILE NOT FOUND 404")
-        return "File not found", 404
+        raise HTTPException(status_code=404, detail="File not found")
 
-@app.route('/config')
-def config():
+@app.get('/config')
+async def config():
     integrity_array = integrity_check_all()
     configuration = integrity_check_all(True)
-    return render_template('config.html', configuration=configuration, integrity_array=integrity_array)
+    return {
+        "configuration": configuration, 
+        "integrity_array": integrity_array,
+    }
 
 
 if __name__ == '__main__':
-    app.run(debug=True,port=5000)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000, debug=True)
