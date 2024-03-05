@@ -59,11 +59,12 @@ async def zip_and_download():
 def download_and_delete_file():
     file_name = 'strawberry.jpg'
     file_path = os.path.join(UPLOAD_FOLDER, file_name)
-    if not os.path.exists(file_path):
-        logging.error("ERROR: FILE NOT FOUND 404")
-        raise HTTPException(status_code=404, detail="File not found")
     
     try:
+        if not os.path.exists(file_path):
+            logging.error("ERROR: FILE NOT FOUND 404")
+            raise HTTPException(status_code=404, detail="File not found")
+
         response = FileResponse(path=file_path, media_type='image/jpg', filename=file_name)
         logging.warning('Downloading %s', file_name)
         return response
@@ -72,8 +73,11 @@ def download_and_delete_file():
         raise HTTPException(status_code=404, detail="File not found")
     finally:
         if os.path.exists(file_path):
-            os.remove(file_path)
-            logging.warning('Removing %s from the storage folder', file_name)
+            try:
+                os.remove(file_path)
+                logging.warning('Removing %s from the storage folder', file_name)
+            except Exception as e:
+                logging.error("ERROR: Failed to delete file: %s", str(e))
 
 @app.get('/config')
 async def config():
