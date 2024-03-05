@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <style>
+        [valid="True"] {
+            color: green;
+            font-weight: normal;
+        }
+        [valid="False"] {
+            color: red;
+            font-weight: bold;
+        }
+
+        [configuration="True"] {
+            background-color: green;
+        }
+        [configuration="False"] {
+            background-color: red;
+        }
+
+        [valid="None"]{
+            color:coral;
+        } 
+        [configuration="None"]{
+            background-color: coral;
+        } 
+    </style>
+</head>
+<body>
+    <table><tr>
+        <td><nav>
+            <ul>
+                <li><a href="/">Main Page</a></li>
+            </ul>
+            </nav></td>
+                <td configuration="{{configuration}}"><a href="/config">System</a></td>
+            </tr></table>
+
+<h3>Checksums</h3>
+<ul id="integrity_checks">
+    {% for obj in integrity_array %}
+    <li>{{obj.filename }}: <span valid='{{ obj.valid }}' >{{ obj.checksum }}</span></li>
+    {% endfor %}
+</ul>
+
+
+
+</body>
+<script>
+
+</script>
+</html>

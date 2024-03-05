@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placeholder Title</title>
+    <style>
+        [configuration="True"] {
+            background-color: green;
+        }
+        [configuration="False"] {
+            background-color: red;
+        }
+        [configuration="None"]{
+            background-color: coral;
+        } 
+
+    </style>
+</head>
+<body style="">
+    <table><tr>
+<td><nav>
+    <ul>
+        <li><a href="/">Main Page</a></li>
+    </ul>
+    </nav></td>
+        <td configuration="{{configuration}}"><a href="/config">System</a></td>
+        <td><a href="/upload_form">Upload</a></td>
+    </tr></table>
+
+<hr>
+<label for="preset">Select Preset:</label>
+<select name="preset" id="preset" style="white-space: pre;font-family: monospace;width: 400px;" onchange="makeselection()">
+    {% for obj in presets_array %}
+    <option >{{ obj.var1 }} : {{ obj.var2 }}</option>
+    {% endfor %}
+</select>
+<hr>
+<div style="display: flex;">
+    <div style="width: 200px;display: flexbox;">
+<label for="options"></label>
+<select id="options" name="options" multiple size="26" style="overflow: auto;width: 200px;" >
+    {% for obj in options_array %}
+    <option >{{obj.var1 }} : {{ obj.var2 }} </option>
+    {% endfor %}
+</select>
+</div>
+<button id="copyButton">Copy Selected</button>
+<div style="width: 200px;display: flexbox">
+<label for="selected_options"></label>
+<select id="selected_options" name="selected_options" multiple size="26" style="overflow: auto;width: 200px;">
+</select>
+</div>
+<button id="downloadSelectionsButton">Download Selections</button>
+</div>
+<!-- Preset Checkboxes with Constant Values -->
+<div id="presetSelections">
+    <input type="checkbox" id="preset11" value="11"><label for="preset11">11</label>
+    <input type="checkbox" id="preset22" value="22"><label for="preset22">22</label>
+    <input type="checkbox" id="preset33" value="33"><label for="preset33">33</label>
+    <input type="checkbox" id="preset44" value="44"><label for="preset44">44</label>
+    <input type="checkbox" id="preset55" value="55"><label for="preset55">55</label>
+    <input type="checkbox" id="preset66" value="66"><label for="preset66">66</label>
+  </div>
+  <button id="updateSelectedOption">Update Selected Option</button>
+  <a href="/download_and_delete_file" download>
+    <button>Download and Delete</button>
+  </a>
+  <a href="/zip_and_download">
+    <button>Zip and Download</button>
+  </a>
+
+<script>
+function makeselection() {
+    clearSelections();
+
+    // Get the selected value from the preset select, which contains a list of countries
+    var presetSelect = document.getElementById('preset');
+    var selectedPreset = presetSelect.options[presetSelect.selectedIndex].text;
+    
+    // Extract the countries from the selected preset, assuming they are after the first ':'
+    var presetCountries = selectedPreset.split(':')[1].trim().split(',');
+
+    // Clean up any whitespace around the country names
+    presetCountries = presetCountries.map(function(country) {
+        return country.trim();
+    });
+
+    // Get the options select element
+    var optionsSelect = document.getElementById('options');
+    
+    // Iterate through each option in the options select element
+    Array.from(optionsSelect.options).forEach(function(option) {
+        // Get the country part of the option
+        var optionCountry = option.text.split(':')[0].trim();
+
+        // Check if the country is in the list from the preset
+        if (presetCountries.includes(optionCountry)) {
+            // If it is, select this option
+            option.selected = true;
+        }
+    });
+}
+
+function clearSelections() {
+    var optionsSelect = document.getElementById('options');
+    Array.from(optionsSelect.options).forEach(function(option) {
+        option.selected = false;
+    });
+}
+
+document.getElementById('copyButton').addEventListener('click', function() {
+    const sourceList = document.getElementById('options');
+    const destList = document.getElementById('selected_options');
+                    
+    // Function to check if an option exists in destList
+    function optionExistsInDestList(opt) {
+        return Array.from(destList.options).some(existingOption => existingOption.value === opt.value);
+    }
+
+    // Iterate over each selected option
+    Array.from(sourceList.selectedOptions).forEach(option => {
+        // Only add the option to destList if it doesn't exist there
+        if (!optionExistsInDestList(option)) {
+            // Clone the option
+            const clonedOption = option.cloneNode(true);
+
+            // Add the cloned option to the destination list
+            destList.appendChild(clonedOption);
+        }
+    });
+
+});
+document.getElementById('downloadSelectionsButton').addEventListener('click', function() {
+    const optionsSelect = document.getElementById('selected_options');
+    const allOptions = Array.from(optionsSelect.options).map(option => {
+        // Assuming the format is 'country : data' and you want to keep both in the CSV
+        let parts = option.text.split(':').map(part => part.trim());
+        // Enclose each part in double quotes and separate by commas for CSV format
+        return `"${parts.join('","')}"`;
+    });
+    
+    // Join each option with a newline to create the CSV string
+    const csvContent = allOptions.join('\n');
+    
+    // Create a Blob from the CSV string with MIME type 'text/csv'
+    const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+    
+    // Create a link element
+    const downloadLink = document.createElement('a');
+    
+    // Create a URL for the Blob and set it as the href of the link
+    downloadLink.href = URL.createObjectURL(blob);
+    
+    // Set the download attribute of the link to specify the file name
+    downloadLink.download = 'selectedoptions.csv';
+    
+    // Trigger the download by simulating a click on the link
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    // Clean up by removing the link and revoking the Blob URL
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(downloadLink.href);
+});
+ //-----
+ document.getElementById('selected_options').addEventListener('change', function() {
+  // Deselect all checkboxes when the selection changes
+  ['11', '22', '33', '44', '55', '66'].forEach(function(value) {
+    document.getElementById(`preset${value}`).checked = false;
+  });
+
+  // Get the current value of the selected option and preselect checkboxes
+  const selectedOption = this.options[this.selectedIndex].text.split(': ')[1];
+  const selectedValues = selectedOption ? selectedOption.split(',') : [];
+  selectedValues.forEach(function(value) {
+    const checkbox = document.getElementById(`preset${value}`);
+    if (checkbox) {
+      checkbox.checked = true;
+    }
+  });
+});
+
+document.getElementById('updateSelectedOption').addEventListener('click', function() {
+  const selectedOptions = document.getElementById('selected_options');
+  if (selectedOptions.selectedIndex === -1) {
+    alert("Please select an option to update.");
+    return;
+  }
+
+  // Collect the selected values from checkboxes
+  const newValue = ['11', '22', '33', '44', '55', '66']
+    .map(function(value) {
+      const checkbox = document.getElementById(`preset${value}`);
+      return checkbox.checked ? checkbox.value : null;
+    })
+    .filter(value => value !== null)
+    .join(',');
+
+  // Update the selected option's value
+  const selectedOption = selectedOptions.options[selectedOptions.selectedIndex];
+  const parts = selectedOption.text.split(':');
+  if (parts.length > 1) {
+    parts[1] = ` ${newValue}`;
+    selectedOption.text = parts.join(':');
+  } else {
+    console.error("Invalid format for selected option.");
+  }
+});
+
+</script>
+</body>
+</html>
