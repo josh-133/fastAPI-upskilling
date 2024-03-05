@@ -3,7 +3,7 @@ import zipfile
 import logging
 # from flask import Flask, render_template, request, send_file, redirect
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
@@ -35,7 +35,7 @@ async def upload(files: List[UploadFile] = File('files')):
         with open(filename, "wb") as buffer:
             buffer.write(await file.read())
         logging.warning('Uploading %s to storage folder.', filename)    
-    return {'message': 'Files uploaded successfully'}
+    return RedirectResponse(url="/", status_code=303)
 
 @app.get('/zip_and_download')
 async def zip_and_download():
@@ -56,7 +56,7 @@ async def zip_and_download():
     return FileResponse(zip_filename, media_type='application/zip', filename=zip_filename)
 
 @app.get('/download_and_delete_file')
-async def download_and_delete_file():
+def download_and_delete_file():
     file_name = 'strawberry.jpg'
     file_path = os.path.join(UPLOAD_FOLDER, file_name)
     if not os.path.exists(file_path):
@@ -65,12 +65,15 @@ async def download_and_delete_file():
     
     try:
         response = FileResponse(path=file_path, media_type='image/jpg', filename=file_name)
-        os.remove(file_path)
-        logging.warning('Downloading %s and removing it from the storage folder', file_name)
+        logging.warning('Downloading %s', file_name)
         return response
     except FileNotFoundError:
         logging.error("ERROR: FILE NOT FOUND 404")
         raise HTTPException(status_code=404, detail="File not found")
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logging.warning('Removing %s from the storage folder', file_name)
 
 @app.get('/config')
 async def config():
