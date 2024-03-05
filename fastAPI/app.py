@@ -1,9 +1,10 @@
 import os
+import io
 import zipfile
 import logging
 # from flask import Flask, render_template, request, send_file, redirect
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
@@ -65,20 +66,23 @@ def download_and_delete_file():
             logging.error("ERROR: FILE NOT FOUND 404")
             raise HTTPException(status_code=404, detail="File not found")
 
-        response = FileResponse(path=file_path, media_type='image/jpg', filename=file_name)
+        # Open the file and read its content
+        with open(file_path, 'rb') as file:
+            file_content = file.read()
+
+        # Send the file as a streaming response
+        response = StreamingResponse(io.BytesIO(file_content), media_type='image/jpeg', headers={"Content-Disposition": f"attachment; filename={file_name}"})
         logging.warning('Downloading %s', file_name)
         return response
     except FileNotFoundError:
         logging.error("ERROR: FILE NOT FOUND 404")
         raise HTTPException(status_code=404, detail="File not found")
     finally:
+        # Ensure the file is deleted after the response is sent
         if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                logging.warning('Removing %s from the storage folder', file_name)
-            except Exception as e:
-                logging.error("ERROR: Failed to delete file: %s", str(e))
-
+            os.remove(file_path)
+            logging.warning('Removing %s from the storage folder', file_name)
+    
 @app.get('/config')
 async def config():
     integrity_array = integrity_check_all()
