@@ -9,26 +9,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
-from fastapi.middleware.cors import CORSMiddleware
-from modules.websockets import ConnectionManager
 
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-websockets_manager = ConnectionManager()
 
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 templates = Jinja2Templates(directory="templates")
 
 UPLOAD_FOLDER = 'storage'
-configuration = True
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request):
