@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { AppService } from './app.service';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
@@ -16,10 +16,12 @@ export class AppComponent implements OnInit {
 
   title = 'angular-app';
 
-  constructor(private http: HttpClient) {}
+  constructor(private appService: AppService) {}
 
   ngOnInit(): void {
-    this.http.get<any>('http://localhost:5000/').subscribe(data => {
+    console.log("Going into ngOnInit now");
+    this.appService.getData().subscribe(data => {
+      console.log(data);
       this.configuration = data.configuration;
       this.presetsArray = data.presetsArray;
       this.optionsArray = data.optionsArray;

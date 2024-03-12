@@ -4,12 +4,21 @@ import zipfile
 import logging
 # from flask import Flask, render_template, request, send_file, redirect
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 
@@ -20,9 +29,9 @@ configuration = True
 async def index():
     global configuration
     configuration = integrity_check_all(True)
-    presets_array = build_presets('array1.xlsx','A2')
-    options_array = build_options('array1.xlsx','A1')
-    return FileResponse('./templates/index.html')
+    presets_array = [preset.__dict__ for preset in build_presets('array1.xlsx', 'A2')]
+    options_array = [option.__dict__ for option in build_options('array1.xlsx', 'A1')]
+    return JSONResponse(content={"presetsArray": presets_array, "optionsArray": options_array})
 
 @app.get('/upload_form')
 async def upload_form():
