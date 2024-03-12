@@ -3,8 +3,9 @@ import io
 import zipfile
 import logging
 # from flask import Flask, render_template, request, send_file, redirect
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from utils import *
 from exceltoclass import *
@@ -12,17 +13,22 @@ from exceltoclass import *
 app = FastAPI()
 
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
+templates = Jinja2Templates(directory="templates")
 
 UPLOAD_FOLDER = 'storage'
 configuration = True
 
-@app.get('/')
-async def index():
-    global configuration
+@app.get('/', response_class=HTMLResponse)
+async def index(request: Request):
     configuration = integrity_check_all(True)
     presets_array = build_presets('array1.xlsx','A2')
     options_array = build_options('array1.xlsx','A1')
-    return FileResponse('./templates/index.html')
+    return templates.TemplateResponse("index.html",
+                                      { "request": request,
+                                        "configuration": configuration,
+                                        "presets_array": presets_array,
+                                        "options_array": options_array
+                                      })
 
 @app.get('/upload_form')
 async def upload_form():
