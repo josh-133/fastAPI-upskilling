@@ -2,7 +2,6 @@ import os
 import io
 import zipfile
 import logging
-# from flask import Flask, render_template, request, send_file, redirect
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -45,7 +44,7 @@ async def upload(files: List[UploadFile] = File('files')):
 
 @app.get('/zip_and_download')
 async def zip_and_download():
-    # Assuming that you have files in the 'storage' folder
+    # files in the 'storage' folder that will be zipped
     files_to_zip = os.listdir(UPLOAD_FOLDER)
     
     # Create a zip file
@@ -62,31 +61,12 @@ async def zip_and_download():
     return FileResponse(zip_filename, media_type='application/zip', filename=zip_filename)
 
 @app.get('/download_and_delete_file')
-def download_and_delete_file():
-    file_name = 'strawberry.jpg'
+def download_and_delete_file(file_name: str):
     file_path = os.path.join(UPLOAD_FOLDER, file_name)
     
-    try:
-        if not os.path.exists(file_path):
-            logging.error("ERROR: FILE NOT FOUND 404")
-            raise HTTPException(status_code=404, detail="File not found")
-
-        # Open the file and read its content
-        with open(file_path, 'rb') as file:
-            file_content = file.read()
-
-        # Send the file as a streaming response
-        response = StreamingResponse(io.BytesIO(file_content), media_type='image/jpeg', headers={"Content-Disposition": f"attachment; filename={file_name}"})
-        logging.warning('Downloading %s', file_name)
-        return response
-    except FileNotFoundError:
-        logging.error("ERROR: FILE NOT FOUND 404")
-        raise HTTPException(status_code=404, detail="File not found")
-    finally:
-        # Ensure the file is deleted after the response is sent
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            logging.warning('Removing %s from the storage folder', file_name)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        logging.warning('Removing %s from the storage folder', file_name)
     
 @app.get('/config')
 async def config():
